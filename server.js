@@ -18,6 +18,7 @@ import express from "express"; // Para crear el servidor web (rutas como /send)
 import cors from "cors"; // Para permitir que tu frontend lo llame desde otro puerto
 import nodemailer from "nodemailer"; // Para enviar correos
 import "dotenv/config"; // Para leer variables del archivo .env
+import { Resend } from "resend";
 
 const app = express();
 
@@ -122,11 +123,8 @@ app.get("/health", (_req, res) => {
  */
 app.post("/send", async (req, res) => {
 	try {
-		// Sacamos los datos que llegaron
 		const { to, subject, text, html } = req.body || {};
 
-		// Validación súper básica:
-		// necesitamos destinatario, asunto, y contenido (text o html)
 		if (!to || !subject || (!text && !html)) {
 			return res.status(400).json({
 				ok: false,
@@ -134,7 +132,34 @@ app.post("/send", async (req, res) => {
 			});
 		}
 
-		const mode = (process.env.MAIL_MODE || "ethereal").toLowerCase();
+		const mode = (process.env.MAIL_MODE || "api").toLowerCase();
+
+		// ✅ MODO API (Resend) — recomendado para Render/Railway
+		if (mode === "api") {
+			if (!process.env.RESEND_API_KEY) {
+				return res.status(500).json({
+					ok: false,
+					error: "Falta RESEND_API_KEY en variables de entorno",
+				});
+			}
+
+			const resend = new Resend(process.env.RESEND_API_KEY);
+
+			const result = await resend.emails.send({
+				from: "Pruebas <onboarding@resend.dev>",
+				to,
+				subject,
+				text,
+				html,
+			});
+
+			return res.json({
+				ok: true,
+				id: result?.data?.id || result?.id,
+			});
+		}
+
+		// ✅ MODO SMTP / ETHEREAL (solo funcionará donde SMTP no esté bloqueado)
 		const { transporter } = await createTransporter();
 
 		const info = await transporter.sendMail({
@@ -148,16 +173,17 @@ app.post("/send", async (req, res) => {
 			html,
 		});
 
-		if (mode === "smtp") {
-			return res.json({ ok: true, messageId: info.messageId });
-		}
-
 		const previewUrl = nodemailer.getTestMessageUrl(info);
-		return res.json({ ok: true, messageId: info.messageId, previewUrl });
+		return res.json({
+			ok: true,
+			messageId: info.messageId,
+			...(mode === "smtp" ? {} : { previewUrl }),
+		});
 	} catch (err) {
-		// Si algo falla, lo mostramos en consola (para debug)
-		console.error(err);
-		return res.status(500).json({ ok: false, error: "Error enviando correo" });
+		console.error("SEND ERROR:", err);
+		return res
+			.status(500)
+			.json({ ok: false, error: err?.message || "Error enviando correo" });
 	}
 });
 
