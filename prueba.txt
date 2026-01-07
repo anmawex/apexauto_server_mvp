@@ -1,0 +1,3 @@
+curl -X POST http://localhost:3001/send \
+  -H "Content-Type: application/json" \
+  -d '{"to":"test@example.com","subject":"Hola","text":"Mensaje de prueba"}'
