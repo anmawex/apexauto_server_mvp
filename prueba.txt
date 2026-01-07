@@ -1,3 +1,9 @@
 curl -X POST http://localhost:3001/send \
   -H "Content-Type: application/json" \
   -d '{"to":"test@example.com","subject":"Hola","text":"Mensaje de prueba"}'
+
+https://apexauto-server-mvp.onrender.com/health
+
+curl -X POST https://apexauto-server-mvp.onrender.com/send \
+  -H "Content-Type: application/json" \
+  -d '{"to":"test@example.com","subject":"Hola","text":"Mensaje de prueba"}'

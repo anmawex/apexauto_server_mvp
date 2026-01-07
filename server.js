@@ -65,36 +65,37 @@ async function createTransporter() {
 		const user = process.env.SMTP_USER;
 		const pass = process.env.SMTP_PASS;
 
-		// Si faltan datos, mejor decirlo claro
 		if (!host || !user || !pass) {
 			throw new Error("Faltan variables SMTP_* en .env para MAIL_MODE=smtp");
 		}
 
-		// Nodemailer va a usar este SMTP para enviar correos reales
-		return nodemailer.createTransport({
-			host,
-			port,
-			secure,
-			auth: { user, pass },
-		});
+		return {
+			transporter: nodemailer.createTransport({
+				host,
+				port,
+				secure,
+				auth: { user, pass },
+			}),
+		};
 	}
 
-	// ✅ MODO PRUEBA (ETHEREAL)
-	// Nodemailer crea una cuenta falsa automáticamente
-	const testAccount = await nodemailer.createTestAccount();
+	// ✅ MODO PRUEBA (ETHEREAL) - SIN createTestAccount()
+	const ethUser = process.env.ETHEREAL_USER;
+	const ethPass = process.env.ETHEREAL_PASS;
 
-	// Retornamos un transportador listo para enviar "correos de mentira"
+	if (!ethUser || !ethPass) {
+		throw new Error(
+			"Faltan ETHEREAL_USER y/o ETHEREAL_PASS para MAIL_MODE=ethereal"
+		);
+	}
+
 	return {
 		transporter: nodemailer.createTransport({
 			host: "smtp.ethereal.email",
 			port: 587,
 			secure: false,
-			auth: {
-				user: testAccount.user,
-				pass: testAccount.pass,
-			},
+			auth: { user: ethUser, pass: ethPass },
 		}),
-		testAccount,
 	};
 }
 
@@ -134,35 +135,23 @@ app.post("/send", async (req, res) => {
 		}
 
 		const mode = (process.env.MAIL_MODE || "ethereal").toLowerCase();
-
-		// ✅ Si estamos en modo SMTP (real)
-		if (mode === "smtp") {
-			const transporter = await createTransporter();
-			const info = await transporter.sendMail({
-				from: process.env.MAIL_FROM || process.env.SMTP_USER, // "quién lo envía"
-				to, // "a quién"
-				subject, // "título"
-				text, // texto simple
-				html, // html (opcional)
-			});
-
-			return res.json({ ok: true, messageId: info.messageId });
-		}
-
-		// ✅ Si estamos en modo Ethereal (prueba)
 		const { transporter } = await createTransporter();
+
 		const info = await transporter.sendMail({
-			from: '"Mi App (Test)" <test@ethereal.email>',
+			from:
+				mode === "smtp"
+					? process.env.MAIL_FROM || process.env.SMTP_USER
+					: '"Mi App (Test)" <test@ethereal.email>',
 			to,
 			subject,
 			text,
 			html,
 		});
 
-		/**
-		 * Ethereal te da un link para "ver" el correo en el navegador.
-		 * Esto es genial para pruebas.
-		 */
+		if (mode === "smtp") {
+			return res.json({ ok: true, messageId: info.messageId });
+		}
+
 		const previewUrl = nodemailer.getTestMessageUrl(info);
 		return res.json({ ok: true, messageId: info.messageId, previewUrl });
 	} catch (err) {
