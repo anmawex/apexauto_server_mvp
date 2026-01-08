@@ -4,5 +4,5 @@ curl -X POST http://localhost:3001/send \
 
 https://apexauto-server-mvp.onrender.com/health
 
-curl -X POST http://localhost:3001/send    -H "Content-Type: application/json"   -d '{"to":"corderoan777@gmail.com","subject":"Hola","text":"Mensaje de prueba"}'
+curl -X POST https://apexauto-server-mvp.onrender.com/send   -H "Content-Type: application/json"   -d '{"to":"corderoan777@gmail.com","subject":"Hola","text":"Mensaje de prueba"}'
 {"ok":true,"id":"eea7c5d7-3b1e-473d-9741-6eed70897432"}

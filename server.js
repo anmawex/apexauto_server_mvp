@@ -35,9 +35,13 @@ app.use(express.json());
  */
 app.use(
 	cors({
-		origin: process.env.CORS_ORIGIN || true, // true = permitir todo (solo recomendado en dev)
+		origin: process.env.CORS_ORIGIN,
+		methods: ["GET", "POST", "OPTIONS"],
+		allowedHeaders: ["Content-Type"],
 	})
 );
+
+app.options("*", cors());
 
 /**
  * Función chiquita para convertir texto a booleano.
